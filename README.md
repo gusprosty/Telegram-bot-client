@@ -19,6 +19,7 @@ telethon.
 -----------
 discord: danroloz
 discord server: https://raw.githubusercontent.com/gusprosty/Telegram-bot-client/refs/heads/main/Spinlorius.txt
-youtube: https://www.youtube.com/@danroloz
+                                 
+youtube: https://www.youtube.com/@danroloz                                            
 telegram bot: @cggdfgdfgbot
 -----------
