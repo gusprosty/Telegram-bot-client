@@ -4,246 +4,80 @@ import os
 import requests
 from datetime import datetime
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
-                             QWidget, QListWidget, QTextEdit, QLineEdit, QPushButton, 
-                             QLabel, QSplitter, QDialog, QListWidgetItem,
-                             QInputDialog, QFrame, QStatusBar, QMessageBox,
-                             QFileDialog, QScrollArea, QCheckBox, QComboBox,
-                             QTabWidget, QGroupBox, QTextEdit, QSpinBox)
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty, QSize, QSettings
-from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QLinearGradient, QBrush, QPalette
-import base64
-from io import BytesIO
+                             QWidget, QListWidget, QLineEdit, QPushButton, 
+                             QLabel, QDialog, QListWidgetItem, QFrame, 
+                             QMessageBox, QFileDialog, QScrollArea, 
+                             QComboBox, QGroupBox, QSlider, QSizePolicy, 
+                             QGraphicsDropShadowEffect, QAbstractItemView, QMenu,
+                             QAction, QTextEdit)
+from PyQt5.QtCore import (Qt, QTimer, QPropertyAnimation, pyqtProperty, 
+                          QSize, QSettings, QThread, pyqtSignal, QMutex, QUrl,
+                          QPropertyAnimation, QEasingCurve, QRect, QPoint)
+from PyQt5.QtGui import (QFont, QPixmap, QPainter, QColor, QBrush, 
+                         QPalette, QIcon, QDesktopServices, QImage, QMouseEvent,
+                         QCursor)
 
-class LargeLoginDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Telegram Bot")
-        self.setFixedSize(600, 700)
-        self.setStyleSheet("""
-            QDialog {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 #37AEE2, stop: 1 #1E96C8);
-            }
-            QLabel {
-                color: white;
-                font-size: 16px;
-                background: transparent;
-            }
-            QLineEdit {
-                padding: 20px;
-                border: 2px solid #E1E1E1;
-                border-radius: 12px;
-                font-size: 16px;
-                background: white;
-                margin: 10px 0px;
-                min-height: 30px;
-            }
-            QLineEdit:focus {
-                border-color: #37AEE2;
-                background: #F8F9FA;
-            }
-            QPushButton {
-                background: #37AEE2;
-                color: white;
-                border: none;
-                padding: 20px;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: bold;
-                margin: 20px 0px;
-                min-height: 30px;
-            }
-            QPushButton:hover {
-                background: #2A8FD6;
-            }
-            QPushButton:pressed {
-                background: #1E7BC2;
-            }
-            QTextEdit {
-                padding: 15px;
-                border: 2px solid #E1E1E1;
-                border-radius: 12px;
-                font-size: 14px;
-                background: white;
-                margin: 10px 0px;
-            }
-        """)
-        self.setup_ui()
-        
-    def setup_ui(self):
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(50, 50, 50, 50)
-        
-        logo_label = QLabel("✈️")
-        logo_label.setStyleSheet("font-size: 80px; margin-bottom: 30px;")
-        logo_label.setAlignment(Qt.AlignCenter)
-        
-        title = QLabel("Telegram Bot Manager")
-        title.setStyleSheet("font-size: 32px; font-weight: bold; margin-bottom: 15px;")
-        title.setAlignment(Qt.AlignCenter)
-        
-        subtitle = QLabel("Bot Management Platform")
-        subtitle.setStyleSheet("font-size: 18px; color: rgba(255,255,255,0.9); margin-bottom: 50px;")
-        subtitle.setAlignment(Qt.AlignCenter)
-        
-        token_label = QLabel("Bot Token")
-        token_label.setStyleSheet("font-weight: bold; font-size: 18px; margin-top: 20px;")
-        
-        self.bot_token_input = QLineEdit()
-        self.bot_token_input.setPlaceholderText("Enter bot token...")
-        self.bot_token_input.setMinimumHeight(60)
-        
-        info_group = QGroupBox("Information")
-        info_group.setStyleSheet("""
-            QGroupBox {
-                background: rgba(255,255,255,0.2);
-                border: 2px solid rgba(255,255,255,0.3);
-                border-radius: 15px;
-                margin-top: 20px;
-                color: white;
-                font-weight: bold;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 10px 0 10px;
-                color: white;
-            }
-        """)
-        
-        info_layout = QVBoxLayout()
-        info_text = QLabel(
-            "1. Create bot via @BotFather\n"
-            "2. Copy bot token\n"
-            "3. Paste token below\n"
-            "4. Send /start to your bot\n"
-            "5. Click Start Messaging"
-        )
-        info_text.setStyleSheet("""
-            background: rgba(255,255,255,0.1); 
-            padding: 25px; 
-            border-radius: 10px;
-            margin: 15px 0px;
-            line-height: 1.6;
-            font-size: 15px;
-        """)
-        info_text.setWordWrap(True)
-        
-        info_layout.addWidget(info_text)
-        info_group.setLayout(info_layout)
-        
-        self.login_button = QPushButton("Start Messaging")
-        self.login_button.setMinimumHeight(60)
-        self.login_button.clicked.connect(self.accept)
-        
-        layout.addWidget(logo_label)
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
-        layout.addWidget(token_label)
-        layout.addWidget(self.bot_token_input)
-        layout.addWidget(info_group)
-        layout.addWidget(self.login_button)
-        layout.addStretch()
-        
-        self.setLayout(layout)
-    
-    def get_credentials(self):
-        return {
-            'bot_token': self.bot_token_input.text().strip()
-        }
+if hasattr(Qt, 'AA_EnableHighDpiScaling'):
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
-class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Settings")
-        self.setFixedSize(500, 600)
-        self.settings = QSettings("TelegramBot", "Client")
-        self.setup_ui()
-        self.load_settings()
-        
-    def setup_ui(self):
-        layout = QVBoxLayout()
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
-        
-        theme_group = QGroupBox("Theme")
-        theme_layout = QVBoxLayout()
-        
-        self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["Light", "Dark", "Glass"])
-        self.theme_combo.setStyleSheet("padding: 10px; font-size: 14px;")
-        
-        theme_layout.addWidget(QLabel("Theme:"))
-        theme_layout.addWidget(self.theme_combo)
-        theme_group.setLayout(theme_layout)
-        
-        auto_group = QGroupBox("Auto-Reply")
-        auto_layout = QVBoxLayout()
-        
-        self.auto_reply_check = QCheckBox("Enable Auto-Reply")
-        self.auto_reply_check.setStyleSheet("font-size: 14px; padding: 5px;")
-        
-        self.auto_reply_text = QTextEdit()
-        self.auto_reply_text.setPlaceholderText("Auto-reply message...")
-        self.auto_reply_text.setMaximumHeight(100)
-        self.auto_reply_text.setStyleSheet("font-size: 14px; padding: 10px;")
-        
-        auto_layout.addWidget(self.auto_reply_check)
-        auto_layout.addWidget(QLabel("Message:"))
-        auto_layout.addWidget(self.auto_reply_text)
-        auto_group.setLayout(auto_layout)
-        
-        msg_group = QGroupBox("Messages")
-        msg_layout = QVBoxLayout()
-        
-        self.msg_delay_spin = QSpinBox()
-        self.msg_delay_spin.setRange(1, 60)
-        self.msg_delay_spin.setSuffix(" seconds")
-        self.msg_delay_spin.setStyleSheet("padding: 10px; font-size: 14px;")
-        
-        msg_layout.addWidget(QLabel("Check delay:"))
-        msg_layout.addWidget(self.msg_delay_spin)
-        msg_group.setLayout(msg_layout)
-        
-        button_layout = QHBoxLayout()
-        self.save_btn = QPushButton("Save")
-        self.save_btn.clicked.connect(self.save_settings)
-        
-        self.cancel_btn = QPushButton("Cancel")
-        self.cancel_btn.clicked.connect(self.reject)
-        
-        button_layout.addWidget(self.save_btn)
-        button_layout.addWidget(self.cancel_btn)
-        
-        layout.addWidget(theme_group)
-        layout.addWidget(auto_group)
-        layout.addWidget(msg_group)
-        layout.addStretch()
-        layout.addLayout(button_layout)
-        
-        self.setLayout(layout)
-    
-    def load_settings(self):
-        theme = self.settings.value("theme", "Light")
-        self.theme_combo.setCurrentText(theme)
-        
-        auto_reply_enabled = self.settings.value("auto_reply_enabled", False, type=bool)
-        self.auto_reply_check.setChecked(auto_reply_enabled)
-        
-        auto_reply_text = self.settings.value("auto_reply_text", "Thanks for your message!")
-        self.auto_reply_text.setPlainText(auto_reply_text)
-        
-        delay = self.settings.value("message_delay", 5, type=int)
-        self.msg_delay_spin.setValue(delay)
-    
-    def save_settings(self):
-        self.settings.setValue("theme", self.theme_combo.currentText())
-        self.settings.setValue("auto_reply_enabled", self.auto_reply_check.isChecked())
-        self.settings.setValue("auto_reply_text", self.auto_reply_text.toPlainText())
-        self.settings.setValue("message_delay", self.msg_delay_spin.value())
-        self.accept()
+
+STYLES = {
+    'Light': {
+        'bg': '#FFFFFF',
+        'chat_bg': '#F0F0F0',
+        'text': '#000000',
+        'text_secondary': '#707579',
+        'input_bg': '#FFFFFF',
+        'list_bg': '#FFFFFF',
+        'list_hover': '#F5F5F5',
+        'list_sel': '#E3F2FD',
+        'msg_in': '#FFFFFF',
+        'msg_out': '#3390EC',
+        'time_in': '#A1AAB3',
+        'time_out': '#BBDEFB',
+        'border': '#E0E0E0',
+        'accent': '#3390EC',
+        'online': '#4CAF50'
+    },
+    'Dark': {
+        'bg': '#17212B',
+        'chat_bg': '#0E1621',
+        'text': '#FFFFFF',
+        'text_secondary': '#8A8D91',
+        'input_bg': '#242F3D',
+        'list_bg': '#17212B',
+        'list_hover': '#202B36',
+        'list_sel': '#2B5278',
+        'msg_in': '#182533',
+        'msg_out': '#2B5278',
+        'time_in': '#758392',
+        'time_out': '#779ABB',
+        'border': '#2F3B4B',
+        'accent': '#3390EC',
+        'online': '#4CAF50'
+    },
+    'Blue': {
+        'bg': '#0F2639',
+        'chat_bg': '#0A1E2E',
+        'text': '#FFFFFF',
+        'text_secondary': '#8A8D91',
+        'input_bg': '#1C3548',
+        'list_bg': '#0F2639',
+        'list_hover': '#1C3548',
+        'list_sel': '#2B5278',
+        'msg_in': '#182533',
+        'msg_out': '#2B5278',
+        'time_in': '#779ABB',
+        'time_out': '#779ABB',
+        'border': '#1C3548',
+        'accent': '#3390EC',
+        'online': '#4CAF50'
+    }
+}
+
+db_mutex = QMutex()
 
 class Database:
     def __init__(self, db_path="telegram_bot_data"):
@@ -253,1027 +87,1579 @@ class Database:
         self.init_database()
     
     def init_database(self):
-        for file in ["messages.json", "chats.json", "processed_updates.json"]:
-            if not os.path.exists(os.path.join(self.db_path, file)):
-                with open(os.path.join(self.db_path, file), 'w', encoding='utf-8') as f:
-                    json.dump({}, f)
+        for file in ["messages.json", "chats.json", "processed.json", "photos_cache"]:
+            path = os.path.join(self.db_path, file)
+            if file == "photos_cache":
+                if not os.path.exists(path):
+                    os.makedirs(path)
+            else:
+                if not os.path.exists(path):
+                    with open(path, 'w', encoding='utf-8') as f:
+                        json.dump({}, f)
     
-    def save_message(self, chat_id, message, is_outgoing, message_type="text", file_data=None):
+    def save_message(self, chat_id, message, is_outgoing, msg_type="text", file_path=None, file_name=None, photo_data=None):
+        db_mutex.lock()
         try:
-            with open(os.path.join(self.db_path, "messages.json"), 'r', encoding='utf-8') as f:
-                messages_data = json.load(f)
+            path = os.path.join(self.db_path, "messages.json")
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
             
-            chat_id_str = str(chat_id)
-            if chat_id_str not in messages_data:
-                messages_data[chat_id_str] = []
+            chat_id = str(chat_id)
+            if chat_id not in data:
+                data[chat_id] = []
             
-            message_obj = {
-                'message': message,
-                'is_outgoing': is_outgoing,
-                'timestamp': datetime.now().strftime("%H:%M"),
-                'type': message_type
+            current_time = datetime.now()
+            msg_obj = {
+                'id': int(current_time.timestamp() * 1000),
+                'text': message,
+                'out': is_outgoing,
+                'time': current_time.strftime("%H:%M"),
+                'type': msg_type,
+                'timestamp': current_time.timestamp()
             }
             
-            if file_data and message_type == "photo":
-                message_obj['file_data'] = file_data
+            if not message and msg_type == 'photo':
+                msg_obj['text'] = "🖼️ Photo"
+            elif not message and msg_type == 'document':
+                msg_obj['text'] = "📎 File"
             
-            if message_type == "text":
-                existing_messages = [msg for msg in messages_data[chat_id_str] 
-                                   if msg.get('type') == 'text' and msg['message'] == message and msg['is_outgoing'] == is_outgoing]
-                if existing_messages:
-                    return
+            if file_path: 
+                msg_obj['file_path'] = file_path
+            if file_name: 
+                msg_obj['file_name'] = file_name
+            if photo_data:
+                # Сохраняем фото в кэш
+                photo_id = f"photo_{int(current_time.timestamp() * 1000)}"
+                photo_path = os.path.join(self.db_path, "photos_cache", f"{photo_id}.jpg")
+                with open(photo_path, 'wb') as f:
+                    f.write(photo_data)
+                msg_obj['photo_id'] = photo_id
+                msg_obj['photo_path'] = photo_path
             
-            messages_data[chat_id_str].append(message_obj)
-            
-            if len(messages_data[chat_id_str]) > 200:
-                messages_data[chat_id_str] = messages_data[chat_id_str][-200:]
-            
-            with open(os.path.join(self.db_path, "messages.json"), 'w', encoding='utf-8') as f:
-                json.dump(messages_data, f, ensure_ascii=False, indent=2)
-                
+            data[chat_id].append(msg_obj)
+
+            if len(data[chat_id]) > 500:
+                data[chat_id] = data[chat_id][-500:]
+
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
         except Exception as e:
-            print(f"Save error: {e}")
-    
-    def get_messages(self, chat_id, limit=200):
+            print(f"Error saving message: {e}")
+        finally:
+            db_mutex.unlock()
+
+    def get_messages(self, chat_id):
+        db_mutex.lock()
         try:
-            with open(os.path.join(self.db_path, "messages.json"), 'r', encoding='utf-8') as f:
-                messages_data = json.load(f)
+            path = os.path.join(self.db_path, "messages.json")
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
             
-            chat_id_str = str(chat_id)
-            if chat_id_str in messages_data:
-                return messages_data[chat_id_str][-limit:]
+            messages = data.get(str(chat_id), [])
+            for msg in messages:
+                if 'type' not in msg:
+                    msg['type'] = 'text'
+                if 'text' not in msg:
+                    msg['text'] = ''
+                if 'time' not in msg:
+                    if 'timestamp' in msg:
+                        try:
+                            dt = datetime.fromtimestamp(msg['timestamp'])
+                            msg['time'] = dt.strftime("%H:%M")
+                        except:
+                            msg['time'] = '00:00'
+                    else:
+                        msg['time'] = '00:00'
+                if 'out' not in msg:
+                    msg['out'] = False
+            return messages
+        except:
             return []
-        except Exception as e:
-            print(f"Load error: {e}")
-            return []
-    
-    def save_chat(self, chat_id, username="", first_name="", last_name=""):
+        finally:
+            db_mutex.unlock()
+
+    def delete_message(self, chat_id, message_id):
+        db_mutex.lock()
         try:
-            with open(os.path.join(self.db_path, "chats.json"), 'r', encoding='utf-8') as f:
-                chats_data = json.load(f)
+            path = os.path.join(self.db_path, "messages.json")
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
             
-            chat_id_str = str(chat_id)
-            chats_data[chat_id_str] = {
-                'username': username,
-                'first_name': first_name,
-                'last_name': last_name,
-                'last_activity': datetime.now().isoformat()
-            }
-            
-            with open(os.path.join(self.db_path, "chats.json"), 'w', encoding='utf-8') as f:
-                json.dump(chats_data, f, ensure_ascii=False, indent=2)
+            chat_id = str(chat_id)
+            if chat_id in data:
+                data[chat_id] = [msg for msg in data[chat_id] if msg['id'] != message_id]
                 
-        except Exception as e:
-            print(f"Save chat error: {e}")
-    
-    def get_chats(self):
-        try:
-            with open(os.path.join(self.db_path, "chats.json"), 'r', encoding='utf-8') as f:
-                chats_data = json.load(f)
-            return chats_data
-        except Exception as e:
-            print(f"Load chats error: {e}")
-            return {}
-    
-    def save_processed_update(self, update_id):
-        try:
-            with open(os.path.join(self.db_path, "processed_updates.json"), 'r', encoding='utf-8') as f:
-                processed_data = json.load(f)
-            
-            processed_data[str(update_id)] = True
-            
-            if len(processed_data) > 1000:
-                all_ids = list(processed_data.keys())
-                for old_id in all_ids[:-500]:
-                    del processed_data[old_id]
-            
-            with open(os.path.join(self.db_path, "processed_updates.json"), 'w', encoding='utf-8') as f:
-                json.dump(processed_data, f)
-                
-        except Exception as e:
-            print(f"Save update error: {e}")
-    
-    def is_update_processed(self, update_id):
-        try:
-            with open(os.path.join(self.db_path, "processed_updates.json"), 'r', encoding='utf-8') as f:
-                processed_data = json.load(f)
-            
-            return str(update_id) in processed_data
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2)
+                return True
+            return False
         except:
             return False
+        finally:
+            db_mutex.unlock()
 
-class TelegramBotManager:
-    def __init__(self, bot_token):
-        self.bot_token = bot_token
-        self.base_url = f"https://api.telegram.org/bot{bot_token}"
-        self.is_initialized = False
-        self.db = Database()
-        self.last_update_id = 0
-        self.settings = QSettings("TelegramBot", "Client")
-        
-    def initialize(self):
+    def clear_chat(self, chat_id):
+        db_mutex.lock()
         try:
-            response = requests.get(f"{self.base_url}/getMe", timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if data['ok']:
-                    self.is_initialized = True
-                    return True
+            path = os.path.join(self.db_path, "messages.json")
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            chat_id = str(chat_id)
+            if chat_id in data:
+                data[chat_id] = []
+                
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2)
+                return True
             return False
-        except Exception as e:
+        except:
             return False
-    
-    def get_updates(self):
+        finally:
+            db_mutex.unlock()
+
+    def save_chat(self, chat_data):
+        db_mutex.lock()
         try:
-            params = {'offset': self.last_update_id + 1, 'timeout': 3}
-            response = requests.get(f"{self.base_url}/getUpdates", params=params, timeout=8)
-            if response.status_code == 200:
-                data = response.json()
-                if data['ok'] and data['result']:
-                    self.last_update_id = max(update['update_id'] for update in data['result'])
-                    return data['result']
-            return []
+            path = os.path.join(self.db_path, "chats.json")
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            cid = str(chat_data['id'])
+            if cid not in data:
+                data[cid] = chat_data
+            else:
+                for key, value in chat_data.items():
+                    if key not in data[cid] or not data[cid][key]:
+                        data[cid][key] = value
+            
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
         except Exception as e:
-            return []
-    
+            print(f"Error saving chat: {e}")
+        finally:
+            db_mutex.unlock()
+            
     def get_chats(self):
-        if not self.is_initialized:
-            return []
-        
-        chats = []
+        db_mutex.lock()
         try:
-            updates = self.get_updates()
+            with open(os.path.join(self.db_path, "chats.json"), 'r', encoding='utf-8') as f:
+                data = json.load(f)
             
-            for update in updates:
-                if 'message' in update:
-                    chat = update['message']['chat']
-                    chat_info = {
-                        'id': chat['id'],
-                        'username': chat.get('username', ''),
-                        'first_name': chat.get('first_name', ''),
-                        'last_name': chat.get('last_name', ''),
-                        'type': 'private'
-                    }
-                    
-                    self.db.save_chat(chat['id'], chat.get('username', ''), 
-                                    chat.get('first_name', ''), chat.get('last_name', ''))
-                    
-                    if 'text' in update['message'] and not self.db.is_update_processed(update['update_id']):
-                        message_text = update['message']['text']
-                        self.db.save_message(chat['id'], message_text, False, "text")
-                        self.db.save_processed_update(update['update_id'])
-                        
-                        if (self.settings.value("auto_reply_enabled", False, type=bool) and 
-                            not message_text.startswith('/')):
-                            reply_text = self.settings.value("auto_reply_text", "Thanks for your message!")
-                            self.send_message(chat['id'], reply_text)
-                    
-                    if not any(c['id'] == chat['id'] for c in chats):
-                        chats.append(chat_info)
-                        
-        except Exception as e:
-            pass
-        
-        saved_chats = self.db.get_chats()
-        for chat_id, chat_data in saved_chats.items():
-            chat_id_int = int(chat_id)
-            if not any(c['id'] == chat_id_int for c in chats):
-                chats.append({
-                    'id': chat_id_int,
-                    'username': chat_data.get('username', ''),
-                    'first_name': chat_data.get('first_name', ''),
-                    'last_name': chat_data.get('last_name', ''),
-                    'type': 'saved'
-                })
-        
-        return chats
-    
-    def get_file(self, file_id):
+            for cid, chat_data in data.items():
+                if 'id' not in chat_data:
+                    chat_data['id'] = cid
+            return data
+        except:
+            return {}
+        finally:
+            db_mutex.unlock()
+
+    def is_processed(self, update_id):
         try:
-            response = requests.get(f"{self.base_url}/getFile", params={'file_id': file_id})
-            if response.status_code == 200:
-                data = response.json()
-                if data['ok']:
-                    return data['result']
-        except Exception as e:
-            pass
-        return None
-    
-    def download_file(self, file_path):
-        try:
-            response = requests.get(f"https://api.telegram.org/file/bot{self.bot_token}/{file_path}")
-            if response.status_code == 200:
-                return response.content
-        except Exception as e:
-            pass
-        return None
-    
-    def check_new_messages(self):
-        if not self.is_initialized:
-            return []
-        
-        new_messages = []
-        try:
-            updates = self.get_updates()
-            
-            for update in updates:
-                if 'message' in update and not self.db.is_update_processed(update['update_id']):
-                    chat = update['message']['chat']
-                    
-                    if 'text' in update['message']:
-                        message_text = update['message']['text']
-                        self.db.save_message(chat['id'], message_text, False, "text")
-                        self.db.save_processed_update(update['update_id'])
-                        
-                        new_messages.append({
-                            'chat_id': chat['id'],
-                            'message': message_text,
-                            'type': 'text'
-                        })
-                    
-                    elif 'photo' in update['message']:
-                        photo = max(update['message']['photo'], key=lambda x: x['file_size'])
-                        file_id = photo['file_id']
-                        
-                        file_info = self.get_file(file_id)
-                        if file_info:
-                            photo_data = self.download_file(file_info['file_path'])
-                            if photo_data:
-                                photo_base64 = base64.b64encode(photo_data).decode('utf-8')
-                                self.db.save_message(chat['id'], "📷 Photo", False, "photo", photo_base64)
-                                self.db.save_processed_update(update['update_id'])
-                                
-                                new_messages.append({
-                                    'chat_id': chat['id'],
-                                    'message': "📷 Photo",
-                                    'type': 'photo'
-                                })
-                        
-        except Exception as e:
-            pass
-        
-        return new_messages
-    
-    def send_message(self, chat_id, message):
-        if not self.is_initialized:
+            with open(os.path.join(self.db_path, "processed.json"), 'r') as f:
+                data = json.load(f)
+            return str(update_id) in data
+        except: 
             return False
-            
+
+    def mark_processed(self, update_id):
         try:
-            payload = {
-                'chat_id': chat_id,
-                'text': message
-            }
-            
-            response = requests.post(f"{self.base_url}/sendMessage", data=payload, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data['ok']:
-                    self.db.save_message(chat_id, message, True, "text")
-                    return True
-            
-            return False
-            
-        except Exception as e:
-            return False
-    
-    def send_photo(self, chat_id, photo_path):
-        if not self.is_initialized:
-            return False
-            
+            path = os.path.join(self.db_path, "processed.json")
+            with open(path, 'r') as f:
+                data = json.load(f)
+            data[str(update_id)] = True
+            if len(data) > 1000:
+                keys = list(data.keys())[-500:]
+                data = {k: data[k] for k in keys}
+            with open(path, 'w') as f:
+                json.dump(data, f)
+        except: 
+            pass
+
+    def clear_all_data(self):
+        """Очистка всех данных при выходе из аккаунта"""
+        db_mutex.lock()
         try:
-            with open(photo_path, 'rb') as photo_file:
-                files = {'photo': photo_file}
-                data = {'chat_id': chat_id}
+
+            for file in ["messages.json", "chats.json", "processed.json"]:
+                path = os.path.join(self.db_path, file)
+                if os.path.exists(path):
+                    with open(path, 'w', encoding='utf-8') as f:
+                        json.dump({}, f)
+            
+
+            photos_cache = os.path.join(self.db_path, "photos_cache")
+            if os.path.exists(photos_cache):
+                for file in os.listdir(photos_cache):
+                    file_path = os.path.join(photos_cache, file)
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+        finally:
+            db_mutex.unlock()
+
+
+class BotWorker(QThread):
+    new_message = pyqtSignal(dict)
+    connection_status = pyqtSignal(bool)
+    photo_received = pyqtSignal(str, bytes)  # chat_id, photo_data
+
+    def __init__(self, token):
+        super().__init__()
+        self.token = token
+        self.running = True
+        self.offset = 0
+        self.db = Database()
+        self.mutex = QMutex()
+
+    def run(self):
+        url = f"https://api.telegram.org/bot{self.token}/getUpdates"
+        while self.running:
+            try:
+                params = {'offset': self.offset + 1, 'timeout': 10}
+                resp = requests.get(url, params=params, timeout=15)
                 
-                response = requests.post(f"{self.base_url}/sendPhoto", files=files, data=data, timeout=30)
-                
-                if response.status_code == 200:
-                    data = response.json()
+                if resp.status_code == 200:
+                    self.connection_status.emit(True)
+                    data = resp.json()
                     if data['ok']:
-                        with open(photo_path, 'rb') as f:
-                            photo_data = f.read()
-                            photo_base64 = base64.b64encode(photo_data).decode('utf-8')
-                            self.db.save_message(chat_id, "📷 Photo", True, "photo", photo_base64)
-                        return True
+                        for update in data['result']:
+                            self.offset = max(self.offset, update['update_id'])
+                            if not self.db.is_processed(update['update_id']):
+                                self.process_update(update)
+                                self.db.mark_processed(update['update_id'])
+                else:
+                    self.connection_status.emit(False)
+            except:
+                self.connection_status.emit(False)
             
-            return False
+            self.msleep(500)
+
+    def process_update(self, update):
+        if 'message' in update:
+            msg = update['message']
+            chat = msg['chat']
             
+            if 'id' not in chat:
+                return
+            
+            chat_info = {
+                'id': chat['id'],
+                'first_name': chat.get('first_name', ''),
+                'last_name': chat.get('last_name', ''),
+                'username': chat.get('username', ''),
+                'type': chat.get('type', 'private')
+            }
+            self.db.save_chat(chat_info)
+
+            content = ""
+            msg_type = "text"
+            photo_data = None
+            
+            if 'text' in msg:
+                content = msg['text']
+            elif 'photo' in msg:
+                msg_type = "photo"
+                content = "🖼️ Photo"
+                photos = msg['photo']
+                if photos:
+                    largest_photo = photos[-1]
+                    file_id = largest_photo.get('file_id')
+                    if file_id:
+                        photo_data = self.download_photo(file_id)
+                        if photo_data:
+                            self.photo_received.emit(str(chat['id']), photo_data)
+            elif 'document' in msg:
+                msg_type = "document"
+                doc = msg['document']
+                file_name = doc.get('file_name', 'Document')
+                content = f"📎 {file_name}"
+            
+            if content:
+                self.db.save_message(chat['id'], content, False, msg_type, photo_data=photo_data)
+                self.new_message.emit({'chat_id': chat['id'], 'type': msg_type})
+
+    def download_photo(self, file_id):
+        """Скачивает фото по file_id"""
+        try:
+
+            url = f"https://api.telegram.org/bot{self.token}/getFile"
+            resp = requests.post(url, data={'file_id': file_id})
+            if resp.status_code == 200:
+                file_data = resp.json()
+                if file_data['ok']:
+                    file_path = file_data['result']['file_path']
+                    
+
+                    download_url = f"https://api.telegram.org/file/bot{self.token}/{file_path}"
+                    photo_resp = requests.get(download_url, timeout=15)
+                    
+                    if photo_resp.status_code == 200:
+                        return photo_resp.content
         except Exception as e:
-            return False
+            print(f"Error downloading photo: {e}")
+        return None
+
+    def stop(self):
+        self.running = False
+        self.wait()
+
+class SendWorker(QThread):
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, token, chat_id, text=None, file_path=None):
+        super().__init__()
+        self.token = token
+        self.chat_id = chat_id
+        self.text = text
+        self.file_path = file_path
+
+    def run(self):
+        try:
+            url = f"https://api.telegram.org/bot{self.token}/"
+            
+            if self.file_path:
+                ext = os.path.splitext(self.file_path)[1].lower()
+                if ext in ['.jpg', '.png', '.jpeg']:
+                    method = "sendPhoto"
+                    with open(self.file_path, 'rb') as f:
+                        files = {'photo': f}
+                        resp = requests.post(url + method, data={'chat_id': self.chat_id}, files=files)
+                else:
+                    method = "sendDocument"
+                    with open(self.file_path, 'rb') as f:
+                        files = {'document': f}
+                        resp = requests.post(url + method, data={'chat_id': self.chat_id}, files=files)
+            else:
+                resp = requests.post(url + "sendMessage", data={'chat_id': self.chat_id, 'text': self.text})
+            
+            if resp.status_code == 200 and resp.json().get('ok'):
+                self.finished.emit(True, "")
+            else:
+                error_msg = resp.json().get('description', 'API Error') if resp.status_code == 200 else f"HTTP {resp.status_code}"
+                self.finished.emit(False, error_msg)
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+
+class AvatarLabel(QLabel):
+    def __init__(self, text="", size=40, parent=None):
+        super().__init__(parent)
+        self.text = text
+        self.size = size
+        self.setFixedSize(size, size)
+        self.setAlignment(Qt.AlignCenter)
+        
+        if text:
+            try:
+                first_char = str(text).strip()[0].upper()
+                self.setText(first_char if first_char.isprintable() else "?")
+            except:
+                self.setText("?")
+        
+        self.update_style()
+
+    def update_style(self):
+        self.setStyleSheet(f"""
+            border-radius: {self.size//2}px; 
+            background: #3390EC; 
+            color: white; 
+            font-weight: bold;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            font-size: {self.size//2}px;
+        """)
+
+class PhotoMessageWidget(QWidget):
+    """Виджет для отображения фото в чате"""
+    def __init__(self, photo_path, theme_dict, scale=1.0, parent=None):
+        super().__init__(parent)
+        self.photo_path = photo_path
+        self.theme = theme_dict
+        self.scale = scale
+        self.is_outgoing = False
+        self.init_ui()
+        
+    def init_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        
+        self.photo_label = QLabel()
+        self.photo_label.setFixedSize(int(300 * self.scale), int(200 * self.scale))
+        self.photo_label.setAlignment(Qt.AlignCenter)
+        self.photo_label.setStyleSheet("""
+            QLabel {
+                border-radius: 10px;
+                border: 1px solid rgba(0,0,0,0.1);
+                background: rgba(0,0,0,0.05);
+            }
+        """)
+
+        self.load_photo()
+        
+
+        self.time_label = QLabel(datetime.now().strftime("%H:%M"))
+        self.time_label.setFont(QFont("Segoe UI", int(10 * self.scale)))
+        self.time_label.setAlignment(Qt.AlignRight)
+        
+        layout.addWidget(self.photo_label)
+        layout.addWidget(self.time_label)
+        
+        self.setLayout(layout)
+        
+    def load_photo(self):
+        if os.path.exists(self.photo_path):
+            pixmap = QPixmap(self.photo_path)
+            if not pixmap.isNull():
+                scaled_pixmap = pixmap.scaled(
+                    self.photo_label.size(), 
+                    Qt.KeepAspectRatio, 
+                    Qt.SmoothTransformation
+                )
+                self.photo_label.setPixmap(scaled_pixmap)
+            else:
+                self.photo_label.setText("🖼️")
+        else:
+            self.photo_label.setText("🖼️")
+    
+    def set_outgoing(self, is_outgoing):
+        self.is_outgoing = is_outgoing
+        time_color = self.theme['time_out'] if is_outgoing else self.theme['time_in']
+        self.time_label.setStyleSheet(f"color: {time_color}; background: transparent;")
+
+class MessageBubble(QWidget):
+    def __init__(self, message_data, theme_dict, scale=1.0, parent=None):
+        super().__init__(parent)
+        self.data = message_data
+        self.theme = theme_dict
+        self.scale = scale
+        self.is_photo = message_data.get('type') == 'photo' and 'photo_path' in message_data
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        if self.is_photo:
+
+            self.photo_widget = PhotoMessageWidget(
+                self.data['photo_path'], 
+                self.theme, 
+                self.scale
+            )
+            self.photo_widget.set_outgoing(self.data.get('out', False))
+            layout.addWidget(self.photo_widget)
+        else:
+            self.content_frame = QFrame()
+            self.content_frame.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Minimum)
+            
+            content_layout = QHBoxLayout(self.content_frame)
+            content_layout.setContentsMargins(
+                int(12 * self.scale), 
+                int(8 * self.scale), 
+                int(12 * self.scale), 
+                int(8 * self.scale)
+            )
+            
+            self.content_label = QLabel()
+            self.content_label.setFont(QFont("Segoe UI", int(14 * self.scale)))
+            self.content_label.setWordWrap(True)
+            self.content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            
+            msg_text = self.data.get('text', '')
+            if not msg_text:
+                msg_type = self.data.get('type', 'text')
+                if msg_type == 'photo':
+                    msg_text = "🖼️ Photo"
+                elif msg_type == 'document':
+                    msg_text = "📎 File"
+                else:
+                    msg_text = "Message"
+            
+            self.content_label.setText(msg_text)
+            
+            content_layout.addWidget(self.content_label)
+            time_layout = QVBoxLayout()
+            time_layout.setAlignment(Qt.AlignBottom)
+            
+            time_text = self.data.get('time', '')
+            if not time_text and 'timestamp' in self.data:
+                try:
+                    dt = datetime.fromtimestamp(self.data['timestamp'])
+                    time_text = dt.strftime("%H:%M")
+                except:
+                    time_text = ""
+            
+            self.time_label = QLabel(time_text)
+            self.time_label.setFont(QFont("Segoe UI", int(11 * self.scale)))
+            
+            time_layout.addWidget(self.time_label)
+            content_layout.addLayout(time_layout)
+            
+            layout.addWidget(self.content_frame)
+        
+        self.setLayout(layout)
+        self.update_style()
+        
+    def update_style(self):
+        if not self.is_photo:
+            radius = int(12 * self.scale)
+            is_outgoing = self.data.get('out', False)
+            
+            if is_outgoing:
+                bg_color = self.theme['msg_out']
+                text_color = '#FFFFFF'
+                time_color = self.theme['time_out']
+                border_radius = f"{radius}px {radius}px 4px {radius}px"
+            else:
+                bg_color = self.theme['msg_in']
+                text_color = self.theme['text']
+                time_color = self.theme['time_in']
+                border_radius = f"{radius}px {radius}px {radius}px 4px"
+            
+            self.content_frame.setStyleSheet(f"""
+                QFrame {{
+                    background: {bg_color};
+                    border: 1px solid {bg_color};
+                    border-radius: {border_radius};
+                    padding: 0px;
+                }}
+            """)
+            
+            self.content_label.setStyleSheet(f"color: {text_color}; background: transparent; border: none;")
+            self.time_label.setStyleSheet(f"color: {time_color}; background: transparent; border: none;")
 
 class ChatListItem(QWidget):
-    def __init__(self, chat_data, parent=None):
+    def __init__(self, chat_id, chat_data, theme_dict, scale=1.0, parent=None):
         super().__init__(parent)
+        self.chat_id = chat_id
         self.chat_data = chat_data
-        self.setFixedHeight(70)
-        self.setup_ui()
-        
-    def setup_ui(self):
+        self.theme = theme_dict
+        self.scale = scale
+        self.isSelected = False
+        self.setFixedHeight(int(72 * scale))
+        self.init_ui()
+
+    def init_ui(self):
         layout = QHBoxLayout()
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(12)
+        layout.setContentsMargins(int(15 * self.scale), int(8 * self.scale), int(15 * self.scale), int(8 * self.scale))
+        layout.setSpacing(int(12 * self.scale))
+
+        first_name = self.chat_data.get('first_name', '')
+        last_name = self.chat_data.get('last_name', '')
+        username = self.chat_data.get('username', '')
         
-        avatar_label = QLabel()
-        avatar_label.setFixedSize(48, 48)
-        avatar_label.setStyleSheet("""
-            QLabel {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #37AEE2, stop:1 #1E96C8);
-                border-radius: 24px;
-                color: white;
-                font-size: 18px;
-                font-weight: bold;
-            }
-        """)
-        
-        first_letter = "U"
-        if self.chat_data.get('first_name'):
-            first_letter = self.chat_data['first_name'][0].upper()
-        elif self.chat_data.get('username'):
-            first_letter = self.chat_data['username'][0].upper()
-        
-        avatar_label.setText(first_letter)
-        avatar_label.setAlignment(Qt.AlignCenter)
-        
-        info_widget = QWidget()
-        info_layout = QVBoxLayout()
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(4)
-        
-        name = self.chat_data.get('first_name', '') + ' ' + self.chat_data.get('last_name', '')
-        name = name.strip()
+        name = f"{first_name} {last_name}".strip()
         if not name:
-            name = self.chat_data.get('username', f"User {self.chat_data['id']}")
+            name = username if username else str(self.chat_id)
         
-        name_label = QLabel(name)
-        name_label.setStyleSheet("""
-            QLabel {
-                color: #000000;
-                font-size: 15px;
-                font-weight: 500;
+        self.avatar = AvatarLabel(name, int(54 * self.scale))
+        
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(int(4 * self.scale))
+        self.name_label = QLabel(name)
+        self.name_label.setFont(QFont("Segoe UI", int(14 * self.scale), QFont.DemiBold))
+        
+        db = Database()
+        messages = db.get_messages(self.chat_id)
+        last_msg = ""
+        last_msg_time = ""
+        unread_count = 0
+        
+        if messages:
+            unread_count = sum(1 for msg in messages if not msg.get('out', False) and not msg.get('read', False))
+            
+            last_msg_data = messages[-1]
+            msg_text = last_msg_data.get('text', '')
+            if msg_text:
+                if len(msg_text) > 30:
+                    last_msg = msg_text[:27] + "..."
+                else:
+                    last_msg = msg_text
+            else:
+                msg_type = last_msg_data.get('type', 'text')
+                if msg_type == 'photo':
+                    last_msg = "🖼️ Photo"
+                elif msg_type == 'document':
+                    last_msg = "📎 File"
+            
+            last_msg_time = last_msg_data.get('time', '')
+            if not last_msg_time and 'timestamp' in last_msg_data:
+                try:
+                    dt = datetime.fromtimestamp(last_msg_data['timestamp'])
+                    last_msg_time = dt.strftime("%H:%M")
+                except:
+                    last_msg_time = ""
+        
+        self.last_msg_label = QLabel(last_msg)
+        self.last_msg_label.setFont(QFont("Segoe UI", int(12 * self.scale)))
+        
+        text_layout.addWidget(self.name_label)
+        text_layout.addWidget(self.last_msg_label)
+        
+        layout.addWidget(self.avatar)
+        layout.addLayout(text_layout)
+        layout.addStretch()
+        
+        right_layout = QVBoxLayout()
+        right_layout.setAlignment(Qt.AlignTop)
+        right_layout.setSpacing(3)
+        
+        if last_msg_time:
+            time_label = QLabel(last_msg_time)
+            time_label.setFont(QFont("Segoe UI", int(10 * self.scale)))
+            right_layout.addWidget(time_label)
+        
+        if unread_count > 0:
+            unread_label = QLabel(str(unread_count))
+            unread_label.setFont(QFont("Segoe UI", int(9 * self.scale), QFont.Bold))
+            unread_label.setStyleSheet("""
+                QLabel {
+                    background: #3390EC;
+                    color: white;
+                    border-radius: 10px;
+                    padding: 2px 6px;
+                    min-width: 20px;
+                }
+            """)
+            unread_label.setAlignment(Qt.AlignCenter)
+            right_layout.addWidget(unread_label)
+        
+        layout.addLayout(right_layout)
+        
+        self.setLayout(layout)
+        self.update_style(False)
+        
+    def update_style(self, selected):
+        self.isSelected = selected
+        palette = self.palette()
+        if selected:
+            palette.setColor(QPalette.Window, QColor(self.theme['list_sel']))
+            self.name_label.setStyleSheet(f"color: {self.theme['text']}; font-weight: bold;")
+            self.last_msg_label.setStyleSheet(f"color: {self.theme['text']};")
+        else:
+            palette.setColor(QPalette.Window, QColor(self.theme['list_bg']))
+            self.name_label.setStyleSheet(f"color: {self.theme['text']};")
+            self.last_msg_label.setStyleSheet(f"color: {self.theme['text_secondary']};")
+        
+        self.setPalette(palette)
+
+    def enterEvent(self, event):
+        if not self.isSelected:
+            palette = self.palette()
+            palette.setColor(QPalette.Window, QColor(self.theme['list_hover']))
+            self.setPalette(palette)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        if not self.isSelected:
+            palette = self.palette()
+            palette.setColor(QPalette.Window, QColor(self.theme['list_bg']))
+            self.setPalette(palette)
+        super().leaveEvent(event)
+
+class SmoothScrollArea(QScrollArea):
+    """Плавная прокрутка с автоскроллом"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setStyleSheet("background: transparent; border: none;")
+        self.verticalScrollBar().setSingleStep(10)
+        self.auto_scroll_enabled = True
+        
+    def enable_auto_scroll(self):
+        """Включить автоскролл"""
+        self.auto_scroll_enabled = True
+        
+    def disable_auto_scroll(self):
+        """Выключить автоскролл (когда пользователь прокручивает вверх)"""
+        self.auto_scroll_enabled = False
+        
+    def scroll_to_bottom_animated(self):
+        """Плавная прокрутка вниз"""
+        if self.auto_scroll_enabled:
+            sb = self.verticalScrollBar()
+            target_value = sb.maximum()
+            
+            animation = QPropertyAnimation(sb, b"value")
+            animation.setDuration(300)
+            animation.setStartValue(sb.value())
+            animation.setEndValue(target_value)
+            animation.setEasingCurve(QEasingCurve.OutCubic)
+            animation.start()
+    
+    def wheelEvent(self, event):
+        """Обработка прокрутки колесиком мыши"""
+        super().wheelEvent(event)
+        
+        if event.angleDelta().y() > 0:
+            self.disable_auto_scroll()
+        elif self.verticalScrollBar().value() >= self.verticalScrollBar().maximum() - 50:
+            self.enable_auto_scroll()
+
+
+class LoginDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Telegram Login")
+        self.setFixedSize(400, 500)
+        self.setStyleSheet("""
+            QDialog { 
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #3390EC, stop:1 #2B5278);
+                border-radius: 10px;
+            }
+            QLabel { 
+                color: white; 
+                font-family: 'Segoe UI'; 
+            }
+            QLineEdit { 
+                padding: 12px; 
+                border-radius: 8px; 
+                background: rgba(255, 255, 255, 0.9); 
+                color: #000000; 
+                border: 1px solid rgba(255, 255, 255, 0.3); 
+                font-size: 14px; 
+            }
+            QPushButton { 
+                background: white; 
+                color: #3390EC; 
+                border-radius: 8px; 
+                padding: 12px; 
+                font-weight: bold; 
+                font-size: 15px; 
+            }
+            QPushButton:hover { 
+                background: #F0F0F0; 
             }
         """)
         
-        last_msg_label = QLabel("Start chatting")
-        last_msg_label.setStyleSheet("""
-            QLabel {
-                color: #707579;
-                font-size: 13px;
-            }
-        """)
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+        layout.setContentsMargins(40, 40, 40, 40)
         
-        info_layout.addWidget(name_label)
-        info_layout.addWidget(last_msg_label)
-        info_widget.setLayout(info_layout)
+        icon = QLabel("✈️")
+        icon.setStyleSheet("font-size: 64px;")
+        icon.setAlignment(Qt.AlignCenter)
         
-        layout.addWidget(avatar_label)
-        layout.addWidget(info_widget)
+        title = QLabel("Telegram Bot")
+        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        title.setAlignment(Qt.AlignCenter)
+        
+        subtitle = QLabel("Connect your bot to start messaging")
+        subtitle.setStyleSheet("font-size: 14px;")
+        subtitle.setAlignment(Qt.AlignCenter)
+        
+        self.token_input = QLineEdit()
+        self.token_input.setPlaceholderText("Bot Token from @BotFather")
+        
+        self.btn = QPushButton("▶ Start Messaging")
+        self.btn.clicked.connect(self.accept)
+        
+        layout.addWidget(icon)
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addStretch()
+        layout.addWidget(QLabel("Bot Token:"))
+        layout.addWidget(self.token_input)
+        layout.addSpacing(20)
+        layout.addWidget(self.btn)
         layout.addStretch()
         
         self.setLayout(layout)
 
+    def get_token(self):
+        return self.token_input.text().strip()
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None, current_settings=None):
+        super().__init__(parent)
+        self.setWindowTitle("⚙️ Settings")
+        self.setFixedSize(400, 400)
+        self.settings_data = current_settings or {}
+        
+        layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
+        
+        theme_grp = QGroupBox("🎨 Appearance")
+        t_layout = QVBoxLayout()
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["Light", "Dark", "Blue"])
+        self.theme_combo.setCurrentText(self.settings_data.get('theme', 'Light'))
+        t_layout.addWidget(QLabel("Theme:"))
+        t_layout.addWidget(self.theme_combo)
+        
+        t_layout.addWidget(QLabel("🔍 Interface Scale:"))
+        self.scale_slider = QSlider(Qt.Horizontal)
+        self.scale_slider.setRange(80, 150)
+        self.scale_slider.setValue(int(self.settings_data.get('scale', 1.0) * 100))
+        self.scale_lbl = QLabel(f"{self.scale_slider.value()}%")
+        self.scale_slider.valueChanged.connect(lambda v: self.scale_lbl.setText(f"{v}%"))
+        
+        scale_h = QHBoxLayout()
+        scale_h.addWidget(self.scale_slider)
+        scale_h.addWidget(self.scale_lbl)
+        t_layout.addLayout(scale_h)
+        theme_grp.setLayout(t_layout)
+        
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("💾 Save")
+        save_btn.clicked.connect(self.accept)
+        
+        cancel_btn = QPushButton("❌ Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(save_btn)
+        
+        layout.addWidget(theme_grp)
+        layout.addStretch()
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+        
+        self.apply_theme()
+
+    def apply_theme(self):
+        theme_name = self.settings_data.get('theme', 'Light')
+        theme = STYLES.get(theme_name, STYLES['Light'])
+        
+        self.setStyleSheet(f"""
+            QDialog {{
+                background: {theme['bg']};
+                color: {theme['text']};
+                border: 1px solid {theme['border']};
+            }}
+            QGroupBox {{
+                font-weight: bold;
+                border: 1px solid {theme['border']};
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                color: {theme['text']};
+                background: {theme['list_bg']};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: {theme['text']};
+            }}
+            QComboBox {{
+                background: {theme['input_bg']};
+                color: {theme['text']};
+                border: 1px solid {theme['border']};
+                border-radius: 3px;
+                padding: 5px;
+            }}
+            QLabel {{
+                color: {theme['text']};
+            }}
+            QPushButton {{
+                background: {theme['accent']};
+                color: white;
+                border: 1px solid {theme['accent']};
+                border-radius: 5px;
+                padding: 8px 15px;
+            }}
+            QPushButton:hover {{
+                background: #44A0FC;
+            }}
+            QPushButton#cancel_btn {{
+                background: {theme['border']};
+                border: 1px solid {theme['border']};
+            }}
+            QPushButton#cancel_btn:hover {{
+                background: {theme['text_secondary']};
+            }}
+        """)
+
+    def get_data(self):
+        return {
+            'theme': self.theme_combo.currentText(),
+            'scale': self.scale_slider.value() / 100.0
+        }
+
+
 class TelegramClient(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.bot_manager = None
-        self.current_chat_id = None
         self.db = Database()
-        self.settings = QSettings("TelegramBot", "Client")
-        self.setup_ui()
-        self.apply_theme()
-        self.show_login_dialog()
+        self.settings = QSettings("PyTelegram", "Config")
+        self.load_settings()
         
-    def setup_ui(self):
-        self.setWindowTitle("Telegram Bot")
-        self.setGeometry(100, 100, 1200, 800)
+        self.bot_token = ""
+        self.current_chat_id = None
+        self.worker = None
+        self.is_logged_in = False
         
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        central_widget.setLayout(main_layout)
-        
-        self.left_panel = QWidget()
-        self.left_panel.setFixedWidth(360)
-        left_layout = QVBoxLayout()
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(0)
-        self.left_panel.setLayout(left_layout)
-        
-        chats_header = QWidget()
-        chats_header.setFixedHeight(60)
-        header_layout = QHBoxLayout()
-        header_layout.setContentsMargins(20, 10, 20, 10)
-        
-        title = QLabel("Telegram")
-        title.setStyleSheet("color: #000000; font-size: 20px; font-weight: bold;")
-        
-        self.settings_btn = QPushButton("⚙️")
-        self.settings_btn.setFixedSize(36, 36)
-        self.settings_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                border-radius: 18px;
-                color: #0088CC;
-                font-size: 16px;
-            }
-            QPushButton:hover {
-                background: #F0F0F0;
-            }
-        """)
-        self.settings_btn.clicked.connect(self.show_settings)
-        
-        self.refresh_btn = QPushButton("⟳")
-        self.refresh_btn.setFixedSize(36, 36)
-        self.refresh_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                border-radius: 18px;
-                color: #0088CC;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: #F0F0F0;
-            }
-        """)
-        self.refresh_btn.clicked.connect(self.refresh_chats)
-        
-        header_layout.addWidget(title)
-        header_layout.addStretch()
-        header_layout.addWidget(self.settings_btn)
-        header_layout.addWidget(self.refresh_btn)
-        chats_header.setLayout(header_layout)
-        
-        search_widget = QWidget()
-        search_widget.setFixedHeight(50)
-        search_layout = QHBoxLayout()
-        search_layout.setContentsMargins(12, 8, 12, 8)
-        
-        search_input = QLineEdit()
-        search_input.setPlaceholderText("Search")
-        search_input.setStyleSheet("""
-            QLineEdit {
-                background: #F7F7F7;
-                border: none;
-                border-radius: 18px;
-                padding: 8px 16px;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                background: #FFFFFF;
-                border: 1px solid #0088CC;
-            }
-        """)
-        
-        search_layout.addWidget(search_input)
-        search_widget.setLayout(search_layout)
-        
-        self.chats_list = QListWidget()
-        self.chats_list.setStyleSheet("""
-            QListWidget {
-                background: #FFFFFF;
-                border: none;
-                outline: none;
-                border-right: 1px solid #E6E6E6;
-            }
-            QListWidget::item {
-                border: none;
-                background: transparent;
-            }
-            QListWidget::item:selected {
-                background: #E3F2FD;
-            }
-        """)
-        self.chats_list.itemClicked.connect(self.on_chat_selected)
-        
-        left_layout.addWidget(chats_header)
-        left_layout.addWidget(search_widget)
-        left_layout.addWidget(self.chats_list)
-        
-        self.right_panel = QWidget()
-        right_layout = QVBoxLayout()
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(0)
-        self.right_panel.setLayout(right_layout)
-        
-        self.chat_header = QWidget()
-        self.chat_header.setFixedHeight(60)
-        self.chat_header_layout = QHBoxLayout()
-        self.chat_header_layout.setContentsMargins(20, 10, 20, 10)
-        
-        self.chat_avatar = QLabel("U")
-        self.chat_avatar.setFixedSize(40, 40)
-        self.chat_avatar.setStyleSheet("""
-            QLabel {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #37AEE2, stop:1 #1E96C8);
-                border-radius: 20px;
-                color: white;
-                font-size: 16px;
-                font-weight: bold;
-            }
-        """)
-        self.chat_avatar.setAlignment(Qt.AlignCenter)
-        
-        self.chat_info = QLabel("Select chat")
-        self.chat_info.setStyleSheet("color: #000000; font-size: 16px; font-weight: bold;")
-        
-        self.chat_header_layout.addWidget(self.chat_avatar)
-        self.chat_header_layout.addSpacing(12)
-        self.chat_header_layout.addWidget(self.chat_info)
-        self.chat_header_layout.addStretch()
-        self.chat_header.setLayout(self.chat_header_layout)
-        
-        self.messages_area = QTextEdit()
-        self.messages_area.setReadOnly(True)
-        self.messages_area.setStyleSheet("""
-            QTextEdit {
-                background: #E5EBF1;
-                border: none;
-                font-size: 14px;
-                padding: 0px;
-            }
-        """)
-        
-        input_widget = QWidget()
-        input_widget.setFixedHeight(70)
-        input_layout = QHBoxLayout()
-        input_layout.setContentsMargins(15, 10, 15, 10)
-        input_layout.setSpacing(8)
-        
-        self.attach_btn = QPushButton("📎")
-        self.attach_btn.setFixedSize(40, 40)
-        self.attach_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                border-radius: 20px;
-                font-size: 18px;
-                color: #707579;
-            }
-            QPushButton:hover {
-                background: #F0F0F0;
-            }
-        """)
-        self.attach_btn.clicked.connect(self.send_photo)
-        
-        self.message_input = QTextEdit()
-        self.message_input.setMaximumHeight(50)
-        self.message_input.setPlaceholderText("Message")
-        self.message_input.setStyleSheet("""
-            QTextEdit {
-                background: #F7F7F7;
-                border: none;
-                border-radius: 20px;
-                padding: 12px 16px;
-                font-size: 14px;
-                color: #000000;
-            }
-            QTextEdit:focus {
-                background: #FFFFFF;
-            }
-        """)
-        
-        self.send_btn = QPushButton("➤")
-        self.send_btn.setFixedSize(40, 40)
-        self.send_btn.setStyleSheet("""
-            QPushButton {
-                background: #0088CC;
-                border: none;
-                border-radius: 20px;
-                font-size: 16px;
-                font-weight: bold;
-                color: white;
-            }
-            QPushButton:hover {
-                background: #0077B3;
-            }
-            QPushButton:disabled {
-                background: #CCCCCC;
-            }
-        """)
-        self.send_btn.clicked.connect(self.send_message)
-        
-        input_layout.addWidget(self.attach_btn)
-        input_layout.addWidget(self.message_input)
-        input_layout.addWidget(self.send_btn)
-        input_widget.setLayout(input_layout)
-        
-        right_layout.addWidget(self.chat_header)
-        right_layout.addWidget(self.messages_area)
-        right_layout.addWidget(input_widget)
-        
-        main_layout.addWidget(self.left_panel)
-        main_layout.addWidget(self.right_panel)
-        
-        self.status_bar = QStatusBar()
-        self.status_bar.setStyleSheet("background: #F8F8F8; color: #707579;")
-        self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Ready")
-        
-        self.message_check_timer = QTimer()
-        self.message_check_timer.timeout.connect(self.check_new_messages)
-        
-    def apply_theme(self):
-        theme = self.settings.value("theme", "Light")
-        
-        if theme == "Dark":
-            self.apply_dark_theme()
-        elif theme == "Glass":
-            self.apply_glass_theme()
+        self.check_login()
+            
+    def check_login(self):
+        token = self.settings.value("bot_token", "")
+        if not token:
+            self.show_login_dialog()
         else:
-            self.apply_light_theme()
-    
-    def apply_light_theme(self):
-        self.setStyleSheet("""
-            QMainWindow {
-                background: #FFFFFF;
-            }
-            QWidget {
-                background: #FFFFFF;
-            }
-        """)
-    
-    def apply_dark_theme(self):
-        self.setStyleSheet("""
-            QMainWindow {
-                background: #1E1E1E;
-            }
-            QWidget {
-                background: #1E1E1E;
-                color: #FFFFFF;
-            }
-            QTextEdit {
-                background: #2D2D2D;
-                color: #FFFFFF;
-            }
-            QLineEdit {
-                background: #2D2D2D;
-                color: #FFFFFF;
-            }
-        """)
-    
-    def apply_glass_theme(self):
-        self.setStyleSheet("""
-            QMainWindow {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(55, 174, 226, 0.9),
-                    stop:1 rgba(30, 150, 200, 0.7));
-            }
-            QWidget {
-                background: rgba(255, 255, 255, 0.1);
-                color: white;
-            }
-            QTextEdit {
-                background: rgba(255, 255, 255, 0.2);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 0.3);
-            }
-            QLineEdit {
-                background: rgba(255, 255, 255, 0.2);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 0.3);
-            }
-        """)
-    
-    def show_settings(self):
-        dialog = SettingsDialog(self)
-        if dialog.exec_() == QDialog.Accepted:
+            self.bot_token = token
+            self.is_logged_in = True
+            self.setup_ui()
             self.apply_theme()
-            if self.message_check_timer.isActive():
-                self.message_check_timer.stop()
-                delay = self.settings.value("message_delay", 5, type=int) * 1000
-                self.message_check_timer.start(delay)
+            self.start_bot_worker()
     
     def show_login_dialog(self):
-        dialog = LargeLoginDialog(self)
-        if dialog.exec_() == QDialog.Accepted:
-            credentials = dialog.get_credentials()
-            self.initialize_bot(credentials)
+        dlg = LoginDialog()
+        if dlg.exec_() == QDialog.Accepted:
+            token = dlg.get_token()
+            if token:
+                self.settings.setValue("bot_token", token)
+                self.bot_token = token
+                self.is_logged_in = True
+                self.setup_ui()
+                self.apply_theme()
+                self.start_bot_worker()
+            else:
+                sys.exit(0)
         else:
             sys.exit(0)
     
-    def initialize_bot(self, credentials):
-        try:
-            self.bot_manager = TelegramBotManager(credentials['bot_token'])
-            self.status_bar.showMessage("Connecting...")
-            
-            QTimer.singleShot(100, self.do_initialize)
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", "Connection failed")
-    
-    def do_initialize(self):
-        try:
-            success = self.bot_manager.initialize()
-            if success:
-                self.status_bar.showMessage("Connected")
-                self.refresh_chats()
-                delay = self.settings.value("message_delay", 5, type=int) * 1000
-                self.message_check_timer.start(delay)
-            else:
-                self.status_bar.showMessage("Connection failed")
-                QMessageBox.critical(self, "Error", "Check token")
-        except Exception as e:
-            self.status_bar.showMessage("Connection error")
-    
-    def check_new_messages(self):
-        if not self.bot_manager:
-            return
+    def logout(self):
+        """Выход из аккаунта"""
+        reply = QMessageBox.question(self, "🚪 Logout", 
+                                   "Are you sure you want to logout?\nAll local data will be cleared.",
+                                   QMessageBox.Yes | QMessageBox.No)
         
-        try:
-            new_messages = self.bot_manager.check_new_messages()
-            if new_messages:
-                for msg in new_messages:
-                    if self.current_chat_id == msg['chat_id']:
-                        self.load_chat_history()
-        except:
-            pass
+        if reply == QMessageBox.Yes:
+            if self.worker:
+                self.worker.stop()
+                self.worker = None
+            
+            self.db.clear_all_data()
+            
+            self.settings.remove("bot_token")
+            
+            self.close()
+            
+            app = QApplication.instance()
+            new_window = TelegramClient()
+            new_window.show()
     
+    def load_settings(self):
+        self.app_scale = float(self.settings.value("scale", 1.0))
+        self.current_theme = self.settings.value("theme", "Light")
+        if self.current_theme not in STYLES:
+            self.current_theme = "Light"
+        self.theme_data = STYLES[self.current_theme]
+
+    def setup_ui(self):
+        self.setWindowTitle("Telegram Client")
+        self.resize(int(1200 * self.app_scale), int(800 * self.app_scale))
+        
+        self.create_menu()
+        
+        self.central = QWidget()
+        self.setCentralWidget(self.central)
+        main_layout = QHBoxLayout(self.central)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0,0,0,0)
+        
+        self.left_panel = QWidget()
+        self.left_panel.setFixedWidth(int(380 * self.app_scale))
+        left_layout = QVBoxLayout(self.left_panel)
+        left_layout.setSpacing(0)
+        left_layout.setContentsMargins(0,0,0,0)
+        
+        self.left_header = QFrame()
+        self.left_header.setFixedHeight(int(60 * self.app_scale))
+        h_layout = QHBoxLayout(self.left_header)
+        h_layout.setContentsMargins(15, 0, 15, 0)
+        
+        self.menu_btn = QPushButton("☰")
+        self.menu_btn.setFixedSize(40, 40)
+        self.menu_btn.clicked.connect(self.open_settings)
+        
+        self.left_title = QLabel("Telegram")
+        self.left_title.setStyleSheet("color: white; font-size: 20px; font-weight: bold;")
+        
+        self.new_chat_btn = QPushButton("✏️")
+        self.new_chat_btn.setFixedSize(40, 40)
+        self.new_chat_btn.setToolTip("New chat")
+        
+        self.search_btn = QPushButton("🔍")
+        self.search_btn.setFixedSize(40, 40)
+        self.search_btn.setToolTip("Search")
+        
+        h_layout.addWidget(self.menu_btn)
+        h_layout.addWidget(self.left_title)
+        h_layout.addStretch()
+        h_layout.addWidget(self.new_chat_btn)
+        h_layout.addWidget(self.search_btn)
+        
+        self.chat_list = QListWidget()
+        self.chat_list.setFrameShape(QFrame.NoFrame)
+        self.chat_list.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.chat_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.chat_list.itemClicked.connect(self.load_chat)
+        
+        left_layout.addWidget(self.left_header)
+        left_layout.addWidget(self.chat_list)
+        
+
+        self.right_panel = QWidget()
+        right_layout = QVBoxLayout(self.right_panel)
+        right_layout.setSpacing(0)
+        right_layout.setContentsMargins(0,0,0,0)
+        
+        self.chat_header = QFrame()
+        self.chat_header.setFixedHeight(int(60 * self.app_scale))
+        ch_layout = QHBoxLayout(self.chat_header)
+        ch_layout.setContentsMargins(15, 0, 15, 0)
+        
+        self.back_btn = QPushButton("←")
+        self.back_btn.setFixedSize(40, 40)
+        
+        self.chat_avatar = AvatarLabel("", int(40 * self.app_scale))
+        
+        self.chat_title = QLabel("Select a chat")
+        self.chat_title.setFont(QFont("Segoe UI", 14, QFont.DemiBold))
+        
+        self.chat_menu_btn = QPushButton("⋮")
+        self.chat_menu_btn.setFixedSize(40, 40)
+        self.chat_menu_btn.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.chat_menu_btn.customContextMenuRequested.connect(self.show_chat_menu)
+        
+        ch_layout.addWidget(self.back_btn)
+        ch_layout.addWidget(self.chat_avatar)
+        ch_layout.addWidget(self.chat_title)
+        ch_layout.addStretch()
+        ch_layout.addWidget(self.chat_menu_btn)
+        
+
+        self.scroll_area = SmoothScrollArea()
+        self.msg_container = QWidget()
+        self.msg_layout = QVBoxLayout(self.msg_container)
+        self.msg_layout.addStretch()
+        self.scroll_area.setWidget(self.msg_container)
+
+        self.input_area = QFrame()
+        self.input_area.setFixedHeight(int(70 * self.app_scale))
+        in_layout = QHBoxLayout(self.input_area)
+        in_layout.setContentsMargins(15, 10, 15, 10)
+        
+        self.attach_btn = QPushButton("📎")
+        self.attach_btn.setFixedSize(40, 40)
+        self.attach_btn.clicked.connect(self.attach_file)
+        self.attach_btn.setToolTip("Attach file")
+        
+        self.msg_input = QLineEdit()
+        self.msg_input.setPlaceholderText("Write a message...")
+        self.msg_input.returnPressed.connect(self.send_text)
+        
+        self.emoji_btn = QPushButton("😊")
+        self.emoji_btn.setFixedSize(40, 40)
+        self.emoji_btn.setToolTip("Emoji")
+        
+        self.send_btn = QPushButton("➤")
+        self.send_btn.setFixedSize(40, 40)
+        self.send_btn.clicked.connect(self.send_text)
+        self.send_btn.setToolTip("Send message")
+        
+        in_layout.addWidget(self.attach_btn)
+        in_layout.addWidget(self.msg_input)
+        in_layout.addWidget(self.emoji_btn)
+        in_layout.addWidget(self.send_btn)
+        
+        right_layout.addWidget(self.chat_header)
+        right_layout.addWidget(self.scroll_area)
+        right_layout.addWidget(self.input_area)
+        
+        main_layout.addWidget(self.left_panel)
+        main_layout.addWidget(self.right_panel)
+
+        self.refresh_chats()
+
+    def create_menu(self):
+        """Создает главное меню"""
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu('📁 File')
+        
+        logout_action = QAction('🚪 Logout', self)
+        logout_action.triggered.connect(self.logout)
+        file_menu.addAction(logout_action)
+        
+        exit_action = QAction('❌ Exit', self)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+
+        edit_menu = menubar.addMenu('✏️ Edit')
+        
+        settings_action = QAction('⚙️ Settings', self)
+        settings_action.triggered.connect(self.open_settings)
+        edit_menu.addAction(settings_action)
+
+        view_menu = menubar.addMenu('👁️ View')
+        
+        refresh_action = QAction('🔄 Refresh', self)
+        refresh_action.triggered.connect(self.refresh_chats)
+        view_menu.addAction(refresh_action)
+
+        help_menu = menubar.addMenu('❓ Help')
+        
+        about_action = QAction('ℹ️ About', self)
+        about_action.triggered.connect(self.show_about)
+        help_menu.addAction(about_action)
+
+    def apply_theme(self):
+        t = self.theme_data
+
+        self.setStyleSheet(f"""
+            QMainWindow {{
+                background: {t['bg']};
+            }}
+            QMenuBar {{
+                background: {t['bg']};
+                color: {t['text']};
+                border-bottom: 1px solid {t['border']};
+            }}
+            QMenuBar::item:selected {{
+                background: {t['list_hover']};
+            }}
+            QMenu {{
+                background: {t['list_bg']};
+                color: {t['text']};
+                border: 1px solid {t['border']};
+            }}
+            QMenu::item:selected {{
+                background: {t['list_hover']};
+            }}
+        """)
+
+        self.left_panel.setStyleSheet(f"background: {t['list_bg']};")
+
+        self.left_header.setStyleSheet(f"""
+            QFrame {{
+                background: {t['accent']};
+                border: none;
+            }}
+            QPushButton {{
+                background: transparent;
+                border: none;
+                color: white;
+                font-size: 18px;
+                border-radius: 20px;
+            }}
+            QPushButton:hover {{
+                background: rgba(255,255,255,0.1);
+            }}
+        """)
+
+        self.chat_list.setStyleSheet(f"""
+            QListWidget {{
+                background: {t['list_bg']};
+                color: {t['text']};
+                border: none;
+                outline: none;
+            }}
+            QListWidget::item {{
+                border: none;
+                background: transparent;
+            }}
+            QListWidget::item:hover {{
+                background: {t['list_hover']};
+            }}
+            QListWidget::item:selected {{
+                background: {t['list_sel']};
+            }}
+            QScrollBar:vertical {{
+                background: {t['list_bg']};
+                width: 8px;
+                margin: 0px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {t['border']};
+                border-radius: 4px;
+                min-height: 20px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {t['text_secondary']};
+            }}
+        """)
+
+        self.chat_header.setStyleSheet(f"""
+            QFrame {{
+                background: {t['bg']};
+                border-bottom: 1px solid {t['border']};
+            }}
+            QPushButton {{
+                background: transparent;
+                border: none;
+                color: {t['text']};
+                font-size: 18px;
+                border-radius: 20px;
+            }}
+            QPushButton:hover {{
+                background: rgba(0,0,0,0.1);
+            }}
+        """)
+
+        self.input_area.setStyleSheet(f"""
+            QFrame {{
+                background: {t['bg']};
+                border-top: 1px solid {t['border']};
+            }}
+            QPushButton {{
+                background: transparent;
+                border: none;
+                color: {t['text']};
+                font-size: 18px;
+                border-radius: 20px;
+            }}
+            QPushButton:hover {{
+                background: rgba(0,0,0,0.1);
+            }}
+            QPushButton#send_btn {{
+                background: {t['accent']};
+                color: white;
+            }}
+            QPushButton#send_btn:hover {{
+                background: #44A0FC;
+            }}
+            QLineEdit {{
+                background: {t['input_bg']};
+                color: {t['text']};
+                border: 1px solid {t['border']};
+                border-radius: 20px;
+                padding: 8px 15px;
+                font-size: 14px;
+            }}
+        """)
+        
+        self.send_btn.setObjectName("send_btn")
+
+        self.right_panel.setStyleSheet(f"background: {t['chat_bg']};")
+        self.chat_title.setStyleSheet(f"color: {t['text']};")
+
+        for i in range(self.chat_list.count()):
+            item = self.chat_list.item(i)
+            widget = self.chat_list.itemWidget(item)
+            if widget:
+                widget.update_style(item.isSelected())
+
+    def start_bot_worker(self):
+        """Запускает worker для получения сообщений"""
+        if self.worker:
+            self.worker.stop()
+        
+        self.worker = BotWorker(self.bot_token)
+        self.worker.new_message.connect(self.on_new_message)
+        self.worker.connection_status.connect(self.update_status)
+        self.worker.photo_received.connect(self.on_photo_received)
+        self.worker.start()
+
     def refresh_chats(self):
-        if not self.bot_manager:
-            return
-            
-        self.refresh_btn.setEnabled(False)
-        self.status_bar.showMessage("Refreshing...")
-        
-        QTimer.singleShot(100, self.do_refresh_chats)
-    
-    def do_refresh_chats(self):
-        try:
-            chats = self.bot_manager.get_chats()
-            self.on_chats_loaded(chats)
-        except Exception as e:
-            self.on_chats_error(str(e))
-    
-    def on_chats_loaded(self, chats):
-        self.chats_list.clear()
-        
-        for chat in chats:
+        self.chat_list.clear()
+        chats = self.db.get_chats()
+        for cid, data in chats.items():
+            widget = ChatListItem(cid, data, self.theme_data, self.app_scale)
             item = QListWidgetItem()
-            widget = ChatListItem(chat)
             item.setSizeHint(widget.sizeHint())
-            self.chats_list.addItem(item)
-            self.chats_list.setItemWidget(item, widget)
+            item.setData(Qt.UserRole, cid)
+            self.chat_list.addItem(item)
+            self.chat_list.setItemWidget(item, widget)
+
+    def load_chat(self, item):
+        chat_id = item.data(Qt.UserRole)
+        self.current_chat_id = chat_id
+
+        chats = self.db.get_chats()
+        chat_data = chats.get(chat_id, {})
         
-        self.status_bar.showMessage(f"{len(chats)} chats")
-        self.refresh_btn.setEnabled(True)
+        first_name = chat_data.get('first_name', '')
+        last_name = chat_data.get('last_name', '')
+        username = chat_data.get('username', '')
         
-        if len(chats) == 0:
-            self.status_bar.showMessage("No chats")
-    
-    def on_chats_error(self, error):
-        self.status_bar.showMessage("Error loading")
-        self.refresh_btn.setEnabled(True)
-    
-    def on_chat_selected(self, item):
-        widget = self.chats_list.itemWidget(item)
-        if widget:
-            self.current_chat_id = widget.chat_data['id']
-            self.update_chat_header(widget.chat_data)
-            self.load_chat_history()
-    
-    def update_chat_header(self, chat_data):
-        name = chat_data.get('first_name', '') + ' ' + chat_data.get('last_name', '')
-        name = name.strip()
+        name = f"{first_name} {last_name}".strip()
         if not name:
-            name = chat_data.get('username', f"User {chat_data['id']}")
+            name = username if username else str(chat_id)
         
-        self.chat_info.setText(name)
+        self.chat_title.setText(name)
+        self.chat_avatar.setText(name[0].upper() if name else "?")
+
+        self.clear_message_area()
+
+        msgs = self.db.get_messages(chat_id)
+        for msg in msgs:
+            self.add_message_bubble(msg, animate=False)
+
+        self.scroll_area.enable_auto_scroll()
+        QTimer.singleShot(100, self.scroll_area.scroll_to_bottom_animated)
+
+    def clear_message_area(self):
+        while self.msg_layout.count() > 1:
+            item = self.msg_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def add_message_bubble(self, msg_data, animate=True):
+        bubble = MessageBubble(msg_data, self.theme_data, self.app_scale)
+        bubble.setContextMenuPolicy(Qt.CustomContextMenu)
+        bubble.customContextMenuRequested.connect(lambda pos, msg=msg_data: self.show_message_menu(msg, pos))
         
-        first_letter = "U"
-        if chat_data.get('first_name'):
-            first_letter = chat_data['first_name'][0].upper()
-        elif chat_data.get('username'):
-            first_letter = chat_data['username'][0].upper()
+        wrapper = QWidget()
+        wrapper_layout = QHBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(int(10 * self.app_scale), int(5 * self.app_scale), 
+                                         int(10 * self.app_scale), int(5 * self.app_scale))
         
-        self.chat_avatar.setText(first_letter)
-    
-    def load_chat_history(self):
+        if msg_data.get('out', False):
+            wrapper_layout.addStretch()
+            wrapper_layout.addWidget(bubble)
+        else:
+            wrapper_layout.addWidget(bubble)
+            wrapper_layout.addStretch()
+            
+        self.msg_layout.insertWidget(self.msg_layout.count() - 1, wrapper)
+        
+        if animate:
+            effect = QGraphicsDropShadowEffect(bubble)
+            effect.setBlurRadius(10)
+            effect.setColor(QColor(0,0,0,50))
+            bubble.setGraphicsEffect(effect)
+            
+            anim = QPropertyAnimation(wrapper, b"windowOpacity")
+            anim.setDuration(300)
+            anim.setStartValue(0)
+            anim.setEndValue(1)
+            anim.start()
+
+            if self.scroll_area.auto_scroll_enabled:
+                QTimer.singleShot(50, self.scroll_area.scroll_to_bottom_animated)
+
+    def send_text(self):
+        txt = self.msg_input.text().strip()
+        if not txt or not self.current_chat_id: 
+            return
+
+        msg_data = {
+            'id': int(datetime.now().timestamp() * 1000),
+            'text': txt,
+            'out': True,
+            'time': datetime.now().strftime("%H:%M"),
+            'type': 'text',
+            'timestamp': datetime.now().timestamp()
+        }
+        self.db.save_message(self.current_chat_id, txt, True, 'text')
+        self.add_message_bubble(msg_data)
+        self.msg_input.clear()
+        
+        # 2. Network Send
+        self.sender_thread = SendWorker(self.bot_token, self.current_chat_id, text=txt)
+        self.sender_thread.start()
+
+    def attach_file(self):
+        if not self.current_chat_id: 
+            return
+        
+        path, _ = QFileDialog.getOpenFileName(self, "📁 Send File", "", 
+                                             "All Files (*);;Images (*.png *.jpg *.jpeg);;Documents (*.pdf *.doc *.docx)")
+        if path:
+            filename = os.path.basename(path)
+            ext = os.path.splitext(path)[1].lower()
+            
+            if ext in ['.png', '.jpg', '.jpeg']:
+                msg_type = "photo"
+                display_text = "🖼️ Photo"
+                with open(path, 'rb') as f:
+                    photo_data = f.read()
+                self.db.save_message(self.current_chat_id, display_text, True, msg_type, 
+                                    file_path=path, file_name=filename, photo_data=photo_data)
+            else:
+                msg_type = "document"
+                display_text = f"📎 {filename}"
+                self.db.save_message(self.current_chat_id, display_text, True, msg_type, 
+                                    file_path=path, file_name=filename)
+
+            msg_data = {
+                'id': int(datetime.now().timestamp() * 1000),
+                'text': display_text,
+                'out': True,
+                'time': datetime.now().strftime("%H:%M"),
+                'type': msg_type,
+                'timestamp': datetime.now().timestamp(),
+                'file_name': filename
+            }
+            
+            if msg_type == 'photo' and 'photo_path' in msg_data:
+                msg_data['photo_path'] = os.path.join(self.db.db_path, "photos_cache", 
+                                                     f"photo_{msg_data['id']}.jpg")
+            
+            self.add_message_bubble(msg_data)
+            
+
+            self.sender_thread = SendWorker(self.bot_token, self.current_chat_id, file_path=path)
+            self.sender_thread.start()
+
+    def on_new_message(self, data):
+        self.refresh_chats()
+        if str(data.get('chat_id', '')) == str(self.current_chat_id):
+            msgs = self.db.get_messages(self.current_chat_id)
+            if msgs:
+                self.add_message_bubble(msgs[-1])
+
+    def on_photo_received(self, chat_id, photo_data):
+        """Обработка полученного фото"""
+        if str(chat_id) == str(self.current_chat_id):
+
+            self.refresh_chats()
+            msgs = self.db.get_messages(self.current_chat_id)
+            if msgs:
+                self.add_message_bubble(msgs[-1])
+
+    def update_status(self, connected):
+        status = "🟢 Online" if connected else "🔴 Offline"
+        self.setWindowTitle(f"Telegram Client - {status}")
+
+    def open_settings(self):
+        curr = {
+            'theme': self.current_theme,
+            'scale': self.app_scale
+        }
+        dlg = SettingsDialog(self, curr)
+        if dlg.exec_() == QDialog.Accepted:
+            data = dlg.get_data()
+            self.settings.setValue("theme", data['theme'])
+            self.settings.setValue("scale", data['scale'])
+            
+            QMessageBox.information(self, "🔄 Restart Required", "Please restart the app to apply changes.")
+            self.load_settings()
+            self.apply_theme()
+
+    def show_about(self):
+        """Показывает информацию о программе"""
+        QMessageBox.about(self, "ℹ️ About", 
+                         "Telegram Bot Client\n\n"
+                         "Version: 2.0\n"
+                         "A desktop client for Telegram bots\n\n"
+                         "Features:\n"
+                         "• Send and receive messages\n"
+                         "• Photo sharing with preview\n"
+                         "• Multiple themes\n"
+                         "• Chat history\n"
+                         "• File attachments\n\n"
+                         "Created with PyQt5")
+
+    def show_message_menu(self, message_data, pos):
+        menu = QMenu(self)
+        
+        delete_action = QAction("🗑️ Delete Message", self)
+        delete_action.triggered.connect(lambda: self.delete_message(message_data))
+        menu.addAction(delete_action)
+        
+
+        if message_data.get('type') == 'photo' and 'photo_path' in message_data:
+            view_photo_action = QAction("👁️ View Photo", self)
+            view_photo_action.triggered.connect(lambda: self.view_photo(message_data['photo_path']))
+            menu.addAction(view_photo_action)
+        
+        menu.exec_(self.mapToGlobal(pos))
+
+    def view_photo(self, photo_path):
+        """Открывает фото в программе просмотра по умолчанию"""
+        if os.path.exists(photo_path):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(photo_path))
+
+    def show_chat_menu(self, pos):
         if not self.current_chat_id:
             return
             
-        try:
-            messages = self.db.get_messages(self.current_chat_id)
-            self.messages_area.clear()
-            
-            if not messages:
-                self.messages_area.setHtml("""
-                    <div style='text-align: center; color: #707579; margin-top: 50px; font-family: system-ui;'>
-                        <h3 style='color: #000000;'>No messages</h3>
-                        <p>Start conversation</p>
-                    </div>
-                """)
-                return
-            
-            html = """
-            <div style='
-                font-family: system-ui, -apple-system, sans-serif;
-                padding: 20px;
-                background: #E5EBF1;
-            '>
-            """
-            
-            for msg in messages:
-                message_type = msg.get('type', 'text')
-                
-                if message_type == 'text':
-                    if msg['is_outgoing']:
-                        html += f"""
-                        <div style='margin: 8px 0px; text-align: right;'>
-                            <div style='
-                                display: inline-block;
-                                max-width: 70%;
-                                background: #0088CC;
-                                padding: 8px 12px;
-                                border-radius: 12px 12px 0px 12px;
-                                color: white;
-                                font-size: 14px;
-                                line-height: 1.4;
-                                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                            '>
-                                <div>{msg['message']}</div>
-                                <div style='
-                                    font-size: 11px;
-                                    color: rgba(255,255,255,0.7);
-                                    text-align: right;
-                                    margin-top: 4px;
-                                '>{msg['timestamp']}</div>
-                            </div>
-                        </div>
-                        """
-                    else:
-                        html += f"""
-                        <div style='margin: 8px 0px; text-align: left;'>
-                            <div style='
-                                display: inline-block;
-                                max-width: 70%;
-                                background: #FFFFFF;
-                                padding: 8px 12px;
-                                border-radius: 0px 12px 12px 12px;
-                                color: #000000;
-                                font-size: 14px;
-                                line-height: 1.4;
-                                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                            '>
-                                <div>{msg['message']}</div>
-                                <div style='
-                                    font-size: 11px;
-                                    color: #707579;
-                                    text-align: right;
-                                    margin-top: 4px;
-                                '>{msg['timestamp']}</div>
-                            </div>
-                        </div>
-                        """
-                elif message_type == 'photo':
-                    if msg['is_outgoing']:
-                        html += f"""
-                        <div style='margin: 8px 0px; text-align: right;'>
-                            <div style='
-                                display: inline-block;
-                                max-width: 70%;
-                                background: #0088CC;
-                                padding: 8px;
-                                border-radius: 12px 12px 0px 12px;
-                                color: white;
-                                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                            '>
-                                <div style='margin-bottom: 4px;'>📷 Photo</div>
-                                <img src='data:image/jpeg;base64,{msg['file_data']}' 
-                                     style='
-                                         max-width: 200px; 
-                                         max-height: 200px; 
-                                         border-radius: 8px;
-                                         display: block;
-                                     '/>
-                                <div style='
-                                    font-size: 11px;
-                                    color: rgba(255,255,255,0.7);
-                                    text-align: right;
-                                    margin-top: 4px;
-                                '>{msg['timestamp']}</div>
-                            </div>
-                        </div>
-                        """
-                    else:
-                        html += f"""
-                        <div style='margin: 8px 0px; text-align: left;'>
-                            <div style='
-                                display: inline-block;
-                                max-width: 70%;
-                                background: #FFFFFF;
-                                padding: 8px;
-                                border-radius: 0px 12px 12px 12px;
-                                color: #000000;
-                                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                            '>
-                                <div style='margin-bottom: 4px;'>📷 Photo</div>
-                                <img src='data:image/jpeg;base64,{msg['file_data']}' 
-                                     style='
-                                         max-width: 200px; 
-                                         max-height: 200px; 
-                                         border-radius: 8px;
-                                         display: block;
-                                     '/>
-                                <div style='
-                                    font-size: 11px;
-                                    color: #707579;
-                                    text-align: right;
-                                    margin-top: 4px;
-                                '>{msg['timestamp']}</div>
-                            </div>
-                        </div>
-                        """
-            
-            html += "</div>"
-            self.messages_area.setHtml(html)
-            
-            self.messages_area.verticalScrollBar().setValue(
-                self.messages_area.verticalScrollBar().maximum()
-            )
-            
-        except Exception as e:
-            self.messages_area.setHtml("""
-                <div style='text-align: center; color: #707579; margin-top: 50px;'>
-                    <h3 style='color: #000000;'>Error</h3>
-                </div>
-            """)
-    
-    def send_message(self):
-        if not self.current_chat_id or not self.bot_manager:
-            QMessageBox.warning(self, "Telegram", "Select chat")
-            return
-            
-        message = self.message_input.toPlainText().strip()
-        if not message:
-            return
+        menu = QMenu(self)
         
-        self.send_btn.setEnabled(False)
-        self.status_bar.showMessage("Sending...")
+        clear_action = QAction("🧹 Clear History", self)
+        clear_action.triggered.connect(self.clear_chat_history)
+        menu.addAction(clear_action)
         
-        QTimer.singleShot(100, lambda: self.do_send_message(message))
-    
-    def do_send_message(self, message):
-        try:
-            success = self.bot_manager.send_message(self.current_chat_id, message)
-            self.on_message_sent(success)
-        except Exception as e:
-            self.on_message_error(str(e))
-    
-    def send_photo(self):
-        if not self.current_chat_id or not self.bot_manager:
-            QMessageBox.warning(self, "Telegram", "Select chat")
-            return
+        info_action = QAction("ℹ️ Chat Info", self)
+        info_action.triggered.connect(self.show_chat_info)
+        menu.addAction(info_action)
         
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Choose Photo", "", 
-            "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
-        )
-        
-        if file_path:
-            self.status_bar.showMessage("Sending...")
-            QTimer.singleShot(100, lambda: self.do_send_photo(file_path))
-    
-    def do_send_photo(self, file_path):
-        try:
-            success = self.bot_manager.send_photo(self.current_chat_id, file_path)
-            if success:
-                self.load_chat_history()
-                self.status_bar.showMessage("Sent")
-            else:
-                self.status_bar.showMessage("Failed")
-        except Exception as e:
-            self.status_bar.showMessage("Error")
-    
-    def on_message_sent(self, success):
-        self.send_btn.setEnabled(True)
-        
-        if success:
-            self.message_input.clear()
-            self.load_chat_history()
-            self.status_bar.showMessage("Sent")
-        else:
-            self.status_bar.showMessage("Failed")
-    
-    def on_message_error(self, error):
-        self.send_btn.setEnabled(True)
-        self.status_bar.showMessage("Error")
+        menu.exec_(self.mapToGlobal(pos))
 
-def main():
-    app = QApplication(sys.argv)
-    app.setApplicationName("Telegram Bot")
-    
-    window = TelegramClient()
-    window.show()
-    
-    sys.exit(app.exec_())
+    def show_chat_info(self):
+        """Показывает информацию о чате"""
+        if not self.current_chat_id:
+            return
+            
+        chats = self.db.get_chats()
+        chat_data = chats.get(str(self.current_chat_id), {})
+        
+        first_name = chat_data.get('first_name', '')
+        last_name = chat_data.get('last_name', '')
+        username = chat_data.get('username', '')
+        
+        name = f"{first_name} {last_name}".strip()
+        if not name:
+            name = username if username else str(self.current_chat_id)
+        
+        messages = self.db.get_messages(self.current_chat_id)
+        total_messages = len(messages)
+        your_messages = sum(1 for msg in messages if msg.get('out', False))
+        their_messages = total_messages - your_messages
+        
+        info_text = f"""
+        <h3>{name}</h3>
+        <p><b>ID:</b> {self.current_chat_id}</p>
+        <p><b>Username:</b> @{username if username else 'N/A'}</p>
+        <hr>
+        <p><b>Total messages:</b> {total_messages}</p>
+        <p><b>Your messages:</b> {your_messages}</p>
+        <p><b>Their messages:</b> {their_messages}</p>
+        """
+        
+        QMessageBox.information(self, "ℹ️ Chat Info", info_text)
+
+    def delete_message(self, message_data):
+        if not self.current_chat_id:
+            return
+            
+        reply = QMessageBox.question(self, "🗑️ Delete Message", 
+                                   "Are you sure you want to delete this message?",
+                                   QMessageBox.Yes | QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            success = self.db.delete_message(self.current_chat_id, message_data.get('id', 0))
+            if success:
+                self.load_chat_by_id(self.current_chat_id)
+            else:
+                QMessageBox.warning(self, "❌ Error", "Failed to delete message")
+
+    def clear_chat_history(self):
+        if not self.current_chat_id:
+            return
+            
+        reply = QMessageBox.question(self, "🧹 Clear History", 
+                                   "Are you sure you want to clear all messages in this chat?",
+                                   QMessageBox.Yes | QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            success = self.db.clear_chat(self.current_chat_id)
+            if success:
+                self.clear_message_area()
+                self.msg_layout.addStretch()
+            else:
+                QMessageBox.warning(self, "❌ Error", "Failed to clear chat history")
+
+    def load_chat_by_id(self, chat_id):
+        for i in range(self.chat_list.count()):
+            item = self.chat_list.item(i)
+            if item.data(Qt.UserRole) == chat_id:
+                self.chat_list.setCurrentItem(item)
+                self.load_chat(item)
+                break
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+
+    w = TelegramClient()
+    w.show()
+    sys.exit(app.exec_())
